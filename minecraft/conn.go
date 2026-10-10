@@ -660,12 +660,17 @@ func (conn *Conn) receive(data []byte) error {
 	if err != nil {
 		return err
 	}
+	if !conn.loggedIn || conn.waitingForSpawn.Load() {
+		conn.log.Debug("login packet received", "packet_id", pkData.h.PacketID)
+	}
 	if pkData.h.PacketID == packet.IDDisconnect {
 		// We always handle disconnect packets and close the connection if one comes in.
 		pks, err := pkData.decode(conn)
 		if err != nil {
 			return err
 		}
+		disconnect := pks[0].(*packet.Disconnect)
+		conn.log.Debug("client disconnect", "reason", disconnect.Reason, "message", disconnect.Message)
 		_ = conn.close(conn.wrap(DisconnectError(pks[0].(*packet.Disconnect).Message), "receive"))
 		return nil
 	}
@@ -1138,6 +1143,7 @@ func (conn *Conn) handleResourcePackClientResponse(pk *packet.ResourcePackClient
 // startGame sends a StartGame packet using the game data of the connection.
 func (conn *Conn) startGame() {
 	data := conn.gameData
+	conn.log.Debug("sending world start", "blocks", len(data.CustomBlocks), "items", len(data.Items))
 	if len(data.Dimensions) > 0 {
 		_ = conn.WritePacket(&packet.DimensionData{Definitions: data.Dimensions})
 	}
