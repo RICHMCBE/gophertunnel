@@ -193,6 +193,14 @@ func (pack *Pack) DownloadURL() string {
 	return pack.downloadURL
 }
 
+// WithDownloadURL returns a copy with an HTTP download location, preserving the
+// compiled bytes and checksum for the RakNet fallback. Configure before listening.
+func (pack *Pack) WithDownloadURL(url string) *Pack {
+	copy := *pack
+	copy.downloadURL = url
+	return &copy
+}
+
 // Checksum returns the SHA256 checksum made from the full, compressed content of the resource pack archive.
 // It is transmitted as a string over network.
 func (pack *Pack) Checksum() [32]byte {
