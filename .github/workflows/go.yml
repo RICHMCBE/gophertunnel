@@ -3,6 +3,7 @@ on: [push, pull_request]
 jobs:
 
   build:
+    if: github.repository == 'Sandertv/gophertunnel'
     name: Build
     runs-on: ubuntu-latest
     steps:
