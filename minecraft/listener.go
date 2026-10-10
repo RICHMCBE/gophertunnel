@@ -413,6 +413,7 @@ func (listener *Listener) listen() {
 // createConn creates a connection for the net.Conn passed and adds it to the listener, so that it may be
 // accepted once its login sequence is complete.
 func (listener *Listener) createConn(netConn net.Conn) {
+	listener.cfg.ErrorLog.Debug("RakNet connection established", "raddr", netConn.RemoteAddr())
 	listener.packsMu.RLock()
 	packs := slices.Clone(listener.packs)
 	listener.packsMu.RUnlock()
@@ -464,6 +465,7 @@ func (listener *Listener) status() ServerStatus {
 // log in, after which it will expose packets received to the user.
 func (listener *Listener) handleConn(conn *Conn) {
 	defer func() {
+		conn.log.Debug("connection ended", "logged_in", conn.loggedIn, "cause", context.Cause(conn.ctx))
 		_ = conn.Close()
 		listener.playerCount.Add(-1)
 		listener.updatePongData()
