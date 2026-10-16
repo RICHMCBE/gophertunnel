@@ -984,15 +984,16 @@ func (conn *Conn) handleResourcePacksInfo(pk *packet.ResourcePacksInfo) error {
 	packsToDownload := make([]string, 0, totalPacks)
 
 	for index, pack := range pk.TexturePacks {
-		id := pack.UUID.String()
-		if _, ok := conn.packQueue.downloadingPacks[id]; ok {
+		packUUID := pack.UUID.String()
+		packID := packUUID + "_" + pack.Version
+		if _, ok := conn.packQueue.downloadingPacks[packID]; ok {
 			conn.log.Warn("handle ResourcePacksInfo: duplicate texture pack", "UUID", pack.UUID)
 			conn.packQueue.packAmount--
 			continue
 		}
-		if conn.downloadResourcePack != nil && !conn.downloadResourcePack(uuid.MustParse(id), pack.Version, index, totalPacks) {
+		if conn.downloadResourcePack != nil && !conn.downloadResourcePack(pack.UUID, pack.Version, index, totalPacks) {
 			conn.ignoredResourcePacks = append(conn.ignoredResourcePacks, exemptedResourcePack{
-				uuid:    id,
+				uuid:    packUUID,
 				version: pack.Version,
 			})
 			conn.packQueue.packAmount--
@@ -1019,8 +1020,8 @@ func (conn *Conn) handleResourcePacksInfo(pk *packet.ResourcePacksInfo) error {
 		}
 
 		// This UUID_Version is a hack Mojang put in place.
-		packsToDownload = append(packsToDownload, id+"_"+pack.Version)
-		conn.packQueue.downloadingPacks[id] = downloadingPack{
+		packsToDownload = append(packsToDownload, packID)
+		conn.packQueue.downloadingPacks[packID] = downloadingPack{
 			size:       pack.Size,
 			buf:        bytes.NewBuffer(make([]byte, 0, pack.Size)),
 			newFrag:    make(chan []byte),
@@ -1223,7 +1224,7 @@ func (conn *Conn) nextResourcePackDownload() error {
 // handleResourcePackDataInfo handles a resource pack data info packet, which initiates the downloading of the
 // pack by the client.
 func (conn *Conn) handleResourcePackDataInfo(pk *packet.ResourcePackDataInfo) error {
-	id := strings.Split(pk.UUID, "_")[0]
+	id := pk.UUID
 
 	pack, ok := conn.packQueue.downloadingPacks[id]
 	if !ok {
@@ -1298,7 +1299,6 @@ func (conn *Conn) handleResourcePackDataInfo(pk *packet.ResourcePackDataInfo) er
 // handleResourcePackChunkData handles a resource pack chunk data packet, which holds a fragment of a resource
 // pack that is being downloaded.
 func (conn *Conn) handleResourcePackChunkData(pk *packet.ResourcePackChunkData) error {
-	pk.UUID = strings.Split(pk.UUID, "_")[0]
 	pack, ok := conn.packQueue.awaitingPacks[pk.UUID]
 	if !ok {
 		// We haven't received a ResourcePackDataInfo packet from the server, so we can't use this data to
@@ -1324,9 +1324,9 @@ func (conn *Conn) handleResourcePackChunkData(pk *packet.ResourcePackChunkData) 
 func (conn *Conn) handleResourcePackChunkRequest(pk *packet.ResourcePackChunkRequest) error {
 	current := conn.packQueue.currentPack
 	chunkSize := uint64(conn.packQueue.chunkSize)
-	uuid, _, _ := strings.Cut(pk.UUID, "_")
-	if current.UUID().String() != uuid {
-		return fmt.Errorf("expected pack UUID %v, but got %v", current.UUID(), pk.UUID)
+	currentID := current.UUID().String() + "_" + current.Version()
+	if currentID != pk.UUID {
+		return fmt.Errorf("expected pack ID %v, but got %v", currentID, pk.UUID)
 	}
 	if conn.packQueue.currentOffset != uint64(pk.ChunkIndex)*chunkSize {
 		return fmt.Errorf("expected chunk index %v, but got %v", conn.packQueue.currentOffset/chunkSize, pk.ChunkIndex)
