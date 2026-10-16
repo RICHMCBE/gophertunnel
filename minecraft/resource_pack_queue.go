@@ -44,7 +44,11 @@ func (queue *resourcePackQueue) Request(packs []string) error {
 		found := false
 		for _, pack := range queue.packs {
 			if uuid == pack.UUID().String() && (!hasVersion || version == "" || version == pack.Version()) {
-				queue.packsToDownload[pack.UUID().String()] = pack
+				// A pack version is part of its wire identity. Packs may share a UUID
+				// while carrying different versions, so keying by UUID alone silently
+				// drops all but the last requested version.
+				packID := pack.UUID().String() + "_" + pack.Version()
+				queue.packsToDownload[packID] = pack
 				found = true
 				break
 			}
