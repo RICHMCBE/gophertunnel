@@ -79,6 +79,8 @@ func (pk *ClientBoundMapItemData) Marshal(io protocol.IO) {
 	protocol.OptionalFunc(io, &pk.XOffset, io.Varint32)
 	protocol.OptionalFunc(io, &pk.YOffset, io.Varint32)
 	protocol.OptionalFunc(io, &pk.Pixels, func(x *[]color.RGBA) {
-		protocol.FuncSlice(io, x, io.BEARGB)
+		// The client reads each pixel as the bytes R, G, B, A; BEARGB sent them
+		// as B, G, R, A and every map showed red and blue swapped.
+		protocol.FuncSlice(io, x, io.RGBA)
 	})
 }
