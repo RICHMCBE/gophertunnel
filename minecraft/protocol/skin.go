@@ -204,6 +204,7 @@ const (
 	PieceTypeCapes
 	PieceTypeClassicSkin
 	PieceTypeEmote
+	PieceTypeCoCo
 	PieceTypeUnsupported
 )
 
@@ -253,19 +254,35 @@ func (x *PersonaPieceTintColour) Marshal(r IO) {
 	}
 }
 
+// personaPieceTintWireNames holds the persona_* names of login data that are not the wire name of the v2168
+// skin codec with the prefix cut off. Only high_pants keeps its underscore on the wire: a client refuses the
+// whole packet carrying a name it does not know.
+var personaPieceTintWireNames = map[string]string{
+	"persona_hand":           "hands",
+	"persona_facial_hair":    "facialhair",
+	"persona_face_accessory": "faceaccessory",
+	"persona_left_leg":       "leftleg",
+	"persona_right_leg":      "rightleg",
+	"persona_left_arm":       "leftarm",
+	"persona_right_arm":      "rightarm",
+	"persona_classic_skin":   "classicskin",
+}
+
 // personaPieceTintWireType converts the persona_* names used in login data to the shorter names used by the
-// v2168 skin codec. The hands type is singular in login data but plural on the wire.
+// v2168 skin codec.
 func personaPieceTintWireType(pieceType string) string {
-	if pieceType == "persona_hand" {
-		return "hands"
+	if wire, ok := personaPieceTintWireNames[pieceType]; ok {
+		return wire
 	}
 	return strings.TrimPrefix(pieceType, "persona_")
 }
 
 // personaPieceTintLoginType converts v2168 wire names back to the persona_* names used in login data.
 func personaPieceTintLoginType(pieceType string) string {
-	if pieceType == "hands" {
-		return "persona_hand"
+	for login, wire := range personaPieceTintWireNames {
+		if wire == pieceType {
+			return login
+		}
 	}
 	if pieceType == "unsupported" {
 		return pieceType
